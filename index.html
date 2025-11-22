@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Roblox Profile Widget</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+
+      body {
+        background-color: transparent; /* Transparent for OBS */
+        font-family: "Inter", sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+        overflow: hidden;
+      }
+
+      /* Roblox App Gradient Background */
+      .roblox-app-bg {
+        background: radial-gradient(
+          circle at 50% 30%,
+          #4a4d52 0%,
+          #1a1c1e 60%,
+          #111213 100%
+        );
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      }
+
+      /* Stats Pills */
+      .stat-pill {
+        background-color: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        transition: background-color 0.2s;
+      }
+      /* Removed hover effects since it's non-interactive in OBS */
+
+      /* Loading shimmer for text */
+      .animate-pulse-fast {
+        animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+
+      /* Sparkle Animation */
+      .sparkle {
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        background: white;
+        clip-path: polygon(
+          50% 0%,
+          61% 35%,
+          98% 35%,
+          68% 57%,
+          79% 91%,
+          50% 70%,
+          21% 91%,
+          32% 57%,
+          2% 35%,
+          39% 35%
+        );
+        opacity: 0;
+        animation: sparkleAnim 3s infinite ease-in-out;
+        box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.8);
+      }
+
+      @keyframes sparkleAnim {
+        0% {
+          transform: scale(0) rotate(0deg);
+          opacity: 0;
+        }
+        50% {
+          transform: scale(1) rotate(45deg);
+          opacity: 0.8;
+        }
+        100% {
+          transform: scale(0) rotate(90deg);
+          opacity: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Main Widget Container -->
+    <div
+      class="roblox-app-bg w-[500px] h-auto min-h-[550px] rounded-[30px] relative overflow-hidden flex flex-col text-white pb-8"
+    >
+      <!-- Top Section: Avatar -->
+      <div class="relative h-[400px] w-full flex justify-center items-end pb-4">
+        <!-- Sparkles -->
+        <div
+          class="sparkle"
+          style="top: 20%; left: 20%; animation-delay: 0s"
+        ></div>
+        <div
+          class="sparkle"
+          style="
+            top: 30%;
+            right: 20%;
+            animation-delay: 1s;
+            width: 15px;
+            height: 15px;
+          "
+        ></div>
+        <div
+          class="sparkle"
+          style="
+            top: 50%;
+            left: 15%;
+            animation-delay: 2s;
+            width: 10px;
+            height: 10px;
+          "
+        ></div>
+
+        <!-- Avatar Image -->
+        <img
+          id="avatar-img"
+          src="https://tr.rbxcdn.com/30Day-Avatar-Headshot-PlaceHolder.png"
+          alt="Avatar"
+          class="h-[380px] object-contain drop-shadow-2xl z-10 transition-all duration-500 hover:scale-105"
+          style="
+            mask-image: linear-gradient(to bottom, black 90%, transparent 100%);
+          "
+        />
+      </div>
+
+      <!-- Info Section -->
+      <div class="px-8 -mt-4 z-20">
+        <!-- Name Block -->
+        <div class="mb-5">
+          <div class="flex items-center gap-2">
+            <i
+              data-lucide="pencil"
+              class="w-5 h-5 text-white fill-white opacity-50"
+            ></i>
+            <h1
+              id="display-name"
+              class="text-3xl font-bold tracking-tight animate-pulse-fast"
+            >
+              Searching...
+            </h1>
+          </div>
+          <p id="username-handle" class="text-gray-400 text-sm mt-1">@...</p>
+        </div>
+
+        <!-- Stats Pills -->
+        <!-- Added mb-8 to give breathing room before bio since buttons are gone -->
+        <div class="flex flex-wrap gap-3 mb-8">
+          <div
+            class="stat-pill px-5 py-2.5 rounded-2xl flex items-center gap-1.5 cursor-default flex-1 justify-center"
+          >
+            <span id="connections-count" class="font-bold text-lg">-</span>
+            <span class="text-gray-300 text-sm font-medium">Friends</span>
+          </div>
+          <div
+            class="stat-pill px-5 py-2.5 rounded-2xl flex items-center gap-1.5 cursor-default flex-1 justify-center"
+          >
+            <span id="followers-count" class="font-bold text-lg">-</span>
+            <span class="text-gray-300 text-sm font-medium">Followers</span>
+          </div>
+          <div
+            class="stat-pill px-5 py-2.5 rounded-2xl flex items-center gap-1.5 cursor-default flex-1 justify-center"
+          >
+            <span id="following-count" class="font-bold text-lg">-</span>
+            <span class="text-gray-300 text-sm font-medium">Following</span>
+          </div>
+        </div>
+
+        <!-- Bio & Join Date -->
+        <div class="space-y-5">
+          <div
+            class="text-gray-200 text-base font-normal leading-relaxed whitespace-pre-line break-words max-h-32 overflow-hidden text-ellipsis relative"
+            id="bio-text"
+          >
+            Loading bio...
+          </div>
+
+          <div class="pt-4 border-t border-white/10">
+            <p
+              id="join-date"
+              class="text-gray-500 text-xs uppercase font-semibold tracking-wider"
+            >
+              Joined: ...
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      lucide.createIcons();
+
+      // Config
+      const params = new URLSearchParams(window.location.search);
+      const targetUsername = params.get("username") || "FroztyPlayz";
+      const fallbackImage =
+        "https://tr.rbxcdn.com/30Day-Avatar-Headshot-PlaceHolder.png";
+
+      const els = {
+        avatar: document.getElementById("avatar-img"),
+        displayName: document.getElementById("display-name"),
+        handle: document.getElementById("username-handle"),
+        connections: document.getElementById("connections-count"),
+        followers: document.getElementById("followers-count"),
+        following: document.getElementById("following-count"),
+        bio: document.getElementById("bio-text"),
+        joinDate: document.getElementById("join-date"),
+      };
+
+      // --- Proxy Helper ---
+      // We use allorigins.win to bypass CORS restrictions on GitHub Pages
+      async function fetchProxy(targetUrl) {
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(
+          targetUrl
+        )}`;
+        const res = await fetch(proxyUrl);
+        if (!res.ok) throw new Error("Proxy error");
+        return res.json();
+      }
+
+      async function init() {
+        try {
+          // 1. Get User ID from Username
+          const userSearchUrl = `https://users.roblox.com/v1/users/search?keyword=${targetUsername}&limit=10`;
+          const searchData = await fetchProxy(userSearchUrl);
+
+          // Find exact match (Roblox search can be fuzzy)
+          const user =
+            searchData.data.find(
+              (u) => u.name.toLowerCase() === targetUsername.toLowerCase()
+            ) || searchData.data[0];
+
+          if (!user) {
+            els.displayName.innerText = "User not found";
+            els.displayName.classList.remove("animate-pulse-fast");
+            return;
+          }
+
+          const userId = user.id;
+
+          // Update Basic Info
+          els.displayName.innerText = user.displayName; // Real display name
+          els.displayName.classList.remove("animate-pulse-fast");
+          els.handle.innerText = `@${user.name}`;
+
+          // 2. Fetch All Stats in Parallel (Faster)
+          const [friendsData, followersData, followingData, userData] =
+            await Promise.all([
+              fetchProxy(
+                `https://friends.roblox.com/v1/users/${userId}/friends/count`
+              ),
+              fetchProxy(
+                `https://friends.roblox.com/v1/users/${userId}/followers/count`
+              ),
+              fetchProxy(
+                `https://friends.roblox.com/v1/users/${userId}/followings/count`
+              ),
+              fetchProxy(`https://users.roblox.com/v1/users/${userId}`), // For Bio & Created Date
+            ]);
+
+          // 3. Update UI
+          els.connections.innerText = friendsData.count;
+
+          // Format large numbers (e.g. 1500 -> 1.5k)
+          const fmt = (n) => (n > 999 ? (n / 1000).toFixed(1) + "k" : n);
+          els.followers.innerText = fmt(followersData.count);
+          els.following.innerText = fmt(followingData.count);
+
+          // Bio
+          els.bio.innerText = userData.description || "No bio available.";
+
+          // Join Date Formatting
+          const date = new Date(userData.created);
+          const options = { year: "numeric", month: "short", day: "numeric" };
+          els.joinDate.innerText = `Joined: ${date.toLocaleDateString(
+            "en-US",
+            options
+          )}`;
+
+          // 4. Fetch High-Res Avatar
+          const avatarUrl = `https://thumbnails.roblox.com/v1/users/avatar?userIds=${userId}&size=720x720&format=Png&isCircular=false`;
+          const avatarData = await fetchProxy(avatarUrl);
+
+          if (avatarData.data && avatarData.data[0].imageUrl) {
+            els.avatar.src = avatarData.data[0].imageUrl;
+          }
+        } catch (err) {
+          console.error("API Error:", err);
+          els.bio.innerText = "Error loading stats.";
+          els.displayName.innerText = targetUsername;
+          els.displayName.classList.remove("animate-pulse-fast");
+        }
+      }
+
+      init();
+    </script>
+  </body>
+</html>
