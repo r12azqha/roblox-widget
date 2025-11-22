@@ -92,9 +92,10 @@
     </style>
   </head>
   <body>
-    <!-- Main Widget Container -->
+    <!-- MAIN WIDGET CONTAINER (Hidden by default until logic runs) -->
     <div
-      class="roblox-app-bg w-[500px] h-auto min-h-[550px] rounded-[30px] relative overflow-hidden flex flex-col text-white pb-8"
+      id="widget-container"
+      class="hidden roblox-app-bg w-[500px] h-auto min-h-[550px] rounded-[30px] relative overflow-hidden flex flex-col text-white pb-8"
     >
       <!-- Top Section: Avatar -->
       <div class="relative h-[400px] w-full flex justify-center items-end pb-4">
@@ -157,7 +158,6 @@
         </div>
 
         <!-- Stats Pills -->
-        <!-- Removed buttons, increased margin-bottom (mb-8) to separate stats from bio cleanly -->
         <div class="flex flex-wrap gap-3 mb-8">
           <div
             class="stat-pill px-5 py-2.5 rounded-2xl flex items-center gap-1.5 cursor-default flex-1 justify-center"
@@ -203,17 +203,8 @@
     <script>
       lucide.createIcons();
 
-      // Config
-      const params = new URLSearchParams(window.location.search);
-
-      // LOGIC FIX: Trim whitespace. Sometimes "12azqha " (with space) crashes the API.
-      const rawUser = params.get("username");
-      const targetUsername = rawUser ? rawUser.trim() : "FroztyPlayz";
-
-      const fallbackImage =
-        "https://tr.rbxcdn.com/30Day-Avatar-Headshot-PlaceHolder.png";
-
       const els = {
+        widgetContainer: document.getElementById("widget-container"),
         avatar: document.getElementById("avatar-img"),
         displayName: document.getElementById("display-name"),
         handle: document.getElementById("username-handle"),
@@ -224,10 +215,26 @@
         joinDate: document.getElementById("join-date"),
       };
 
+      // --- REDIRECT LOGIC ---
+      const params = new URLSearchParams(window.location.search);
+      const rawUser = params.get("username");
+
+      if (!rawUser) {
+        // Force Redirect if no username is present
+        // Using replace() so the back button logic is cleaner
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set("username", "12azqha");
+        window.location.replace(newUrl.toString());
+      } else {
+        // We have a user, show the widget and load
+        els.widgetContainer.classList.remove("hidden");
+        els.widgetContainer.classList.add("flex");
+        init(rawUser.trim());
+      }
+
       // --- Robust Proxy Helper ---
       async function fetchProxy(targetUrl) {
         try {
-          // Primary: AllOrigins
           const r1 = await fetch(
             `https://api.allorigins.win/raw?url=${encodeURIComponent(
               targetUrl
@@ -237,7 +244,6 @@
           throw new Error("Primary proxy failed");
         } catch (e) {
           console.warn("Swapping to backup proxy...");
-          // Backup: CorsProxy.io
           const r2 = await fetch(
             `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`
           );
@@ -246,8 +252,8 @@
         }
       }
 
-      async function init() {
-        // Immediately show the Handle so the user knows we are looking for THEM.
+      async function init(targetUsername) {
+        // Immediately show the Handle
         els.handle.innerText = `@${targetUsername}`;
 
         try {
@@ -255,33 +261,27 @@
           const userSearchUrl = `https://users.roblox.com/v1/users/search?keyword=${targetUsername}&limit=10`;
           const searchData = await fetchProxy(userSearchUrl);
 
-          // LOGIC FIX: Check DisplayName AND Username.
-          // Search API is fuzzy. This ensures we get the best match.
-          const user =
-            searchData.data.find(
-              (u) =>
-                u.name.toLowerCase() === targetUsername.toLowerCase() ||
-                u.displayName.toLowerCase() === targetUsername.toLowerCase()
-            ) || searchData.data[0];
+          // Strict Handle Search (Only checks @handle)
+          const user = searchData.data.find(
+            (u) => u.name.toLowerCase() === targetUsername.toLowerCase()
+          );
 
           // ERROR: Profile Not Found
           if (!user) {
-            els.displayName.innerText = "Profile Not Found";
-            els.bio.innerText = `Could not find user "${targetUsername}".\nCheck the spelling!`;
+            els.displayName.innerText = "Handle Not Found";
+            els.bio.innerText = `Could not find the handle "@${targetUsername}".\nAre you searching by Display Name? Try the handle instead.`;
             els.displayName.classList.remove("animate-pulse-fast");
             return;
           }
 
           const userId = user.id;
 
-          // Success: Update Display Name (The Big Text)
+          // Success
           els.displayName.innerText = user.displayName;
           els.displayName.classList.remove("animate-pulse-fast");
-
-          // Ensure handle is exactly correct from API
           els.handle.innerText = `@${user.name}`;
 
-          // 2. Fetch All Stats in Parallel
+          // 2. Fetch Stats
           const results = await Promise.allSettled([
             fetchProxy(
               `https://friends.roblox.com/v1/users/${userId}/friends/count`
@@ -352,8 +352,6 @@
             "Could not connect to Roblox API.\nTry refreshing the source.";
         }
       }
-
-      init();
     </script>
   </body>
 </html>
