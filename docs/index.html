@@ -93,13 +93,11 @@
   </head>
   <body>
     <!-- MAIN WIDGET CONTAINER -->
-    <!-- Resized: Width 400px, Min-Height 480px (Fits easily in 600px height) -->
     <div
       id="widget-container"
       class="hidden roblox-app-bg w-[400px] h-auto min-h-[480px] rounded-[24px] relative overflow-hidden flex flex-col text-white pb-6"
     >
       <!-- Top Section: Avatar -->
-      <!-- Resized height to 320px -->
       <div class="relative h-[320px] w-full flex justify-center items-end pb-4">
         <!-- Sparkles -->
         <div
@@ -128,16 +126,15 @@
         ></div>
 
         <!-- Avatar Image -->
-        <!-- Resized image to 300px to match container scale -->
+        <!-- Changed: Initial src is transparent pixel, no fallback placeholder -->
         <img
           id="avatar-img"
-          src="https://tr.rbxcdn.com/30Day-Avatar-Headshot-PlaceHolder.png"
+          src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
           alt="Avatar"
-          class="h-[300px] object-contain drop-shadow-2xl z-10 transition-all duration-500 hover:scale-105"
+          class="h-[300px] object-contain drop-shadow-2xl z-10 transition-all duration-500 hover:scale-105 opacity-0"
           style="
             mask-image: linear-gradient(to bottom, black 90%, transparent 100%);
           "
-          onerror="this.src='https://tr.rbxcdn.com/30Day-Avatar-Headshot-PlaceHolder.png'"
         />
       </div>
 
@@ -146,7 +143,6 @@
         <!-- Name Block -->
         <div class="mb-4">
           <div class="flex items-center gap-2">
-            <!-- Resized text to 2xl to fit narrower width -->
             <h1
               id="display-name"
               class="text-2xl font-bold tracking-tight animate-pulse-fast"
@@ -163,19 +159,31 @@
           <div
             class="stat-pill px-3 py-2 rounded-xl flex items-center gap-1 cursor-default flex-1 justify-center"
           >
-            <span id="connections-count" class="font-bold text-base">-</span>
+            <span
+              id="connections-count"
+              class="font-bold text-base animate-pulse-fast"
+              >-</span
+            >
             <span class="text-gray-300 text-xs font-medium">Connections</span>
           </div>
           <div
             class="stat-pill px-3 py-2 rounded-xl flex items-center gap-1 cursor-default flex-1 justify-center"
           >
-            <span id="followers-count" class="font-bold text-base">-</span>
+            <span
+              id="followers-count"
+              class="font-bold text-base animate-pulse-fast"
+              >-</span
+            >
             <span class="text-gray-300 text-xs font-medium">Followers</span>
           </div>
           <div
             class="stat-pill px-3 py-2 rounded-xl flex items-center gap-1 cursor-default flex-1 justify-center"
           >
-            <span id="following-count" class="font-bold text-base">-</span>
+            <span
+              id="following-count"
+              class="font-bold text-base animate-pulse-fast"
+              >-</span
+            >
             <span class="text-gray-300 text-xs font-medium">Following</span>
           </div>
         </div>
@@ -183,7 +191,7 @@
         <!-- Bio & Join Date -->
         <div class="space-y-3">
           <div
-            class="text-gray-200 text-sm font-normal leading-relaxed whitespace-pre-line break-words max-h-28 overflow-hidden text-ellipsis relative"
+            class="text-gray-200 text-sm font-normal leading-relaxed whitespace-pre-line break-words max-h-28 overflow-hidden text-ellipsis relative animate-pulse-fast"
             id="bio-text"
           >
             Loading bio...
@@ -220,8 +228,8 @@
       const params = new URLSearchParams(window.location.search);
       const rawUser = params.get("username");
       const fallbackUser = "12azqha";
-      const placeholderImg =
-        "https://tr.rbxcdn.com/30Day-Avatar-Headshot-PlaceHolder.png";
+
+      // Removed fallback placeholder image constant
 
       if (!rawUser) {
         const newUrl = new URL(window.location.href);
@@ -239,6 +247,7 @@
         const cacheBuster = `${separator}_t=${Date.now()}`;
 
         try {
+          // Try Primary Proxy
           const r1 = await fetch(
             `https://api.allorigins.win/raw?url=${encodeURIComponent(
               targetUrl
@@ -247,7 +256,7 @@
           if (r1.ok) return await r1.json();
           throw new Error("Primary proxy failed");
         } catch (e) {
-          console.warn("Swapping to backup proxy...");
+          // Try Backup Proxy
           const urlWithCache = targetUrl + cacheBuster;
           const r2 = await fetch(
             `https://corsproxy.io/?${encodeURIComponent(urlWithCache)}`
@@ -257,41 +266,118 @@
         }
       }
 
-      // --- Countdown & Refresh Logic ---
-      function startAutoRefresh(seconds) {
-        let counter = seconds;
+      // --- Independent Avatar Tracker Logic ---
+      async function trackAvatar(userId) {
+        const run = async () => {
+          try {
+            const avatarUrl = `https://thumbnails.roblox.com/v1/users/avatar?userIds=${userId}&size=720x720&format=Png&isCircular=false`;
+            const data = await fetchProxy(avatarUrl);
 
-        const updateText = () => {
-          els.bio.innerText = `Could not connect to Roblox API.\nRefreshing in ${counter} seconds..`;
-        };
-
-        // Run immediately
-        updateText();
-
-        const interval = setInterval(() => {
-          counter--;
-          if (counter <= 0) {
-            clearInterval(interval);
-            els.bio.innerText = "Refreshing now...";
-            window.location.reload();
-          } else {
-            updateText();
+            // Check if image is ready
+            if (
+              data.data &&
+              data.data[0].state === "Completed" &&
+              data.data[0].imageUrl
+            ) {
+              const imgUrl = data.data[0].imageUrl;
+              // Preload before showing
+              const newImg = new Image();
+              newImg.onload = () => {
+                els.avatar.src = imgUrl;
+                // Fade in
+                els.avatar.classList.remove("opacity-0", "animate-pulse-fast");
+              };
+              newImg.src = imgUrl;
+            } else {
+              throw new Error("Avatar not ready or pending");
+            }
+          } catch (e) {
+            // On fail: Keep transparent, retry in 5s
+            // Ensure pulse/opacity classes are reset for retry state if needed
+            // (Though if it's opacity-0, pulsing isn't visible, but logic is consistent)
+            setTimeout(run, 5000);
           }
-        }, 1000);
+        };
+        run();
       }
 
+      // --- Independent Stat Tracker Logic ---
+      async function trackStat({
+        element,
+        url,
+        extractValue,
+        formatValue,
+        type,
+      }) {
+        const run = async () => {
+          try {
+            const data = await fetchProxy(url);
+            const val = extractValue(data);
+
+            // Check Validation Logic based on type
+            let isValid = false;
+
+            if (type === "number") {
+              // For stats: valid if > 0
+              isValid = typeof val === "number" && val > 0;
+            } else if (type === "text") {
+              // For bio: valid if not empty
+              isValid = val && val.trim().length > 0;
+            }
+
+            if (isValid) {
+              // Success! Stop flashing, show value
+              element.classList.remove("animate-pulse-fast");
+              element.innerText = formatValue ? formatValue(val) : val;
+
+              // Also update join date if this was the bio fetch (since they share endpoint)
+              if (type === "text" && data.created) {
+                const date = new Date(data.created);
+                els.joinDate.innerText = `Joined: ${date.toLocaleDateString(
+                  "en-US",
+                  { year: "numeric", month: "short", day: "numeric" }
+                )}`;
+              }
+            } else {
+              throw new Error("Value is 0 or empty");
+            }
+          } catch (err) {
+            // On Error or invalid value:
+            element.classList.add("animate-pulse-fast");
+
+            if (type === "number") element.innerText = "-";
+            if (type === "text") element.innerText = "Loading bio...";
+
+            // Retry in 5 seconds
+            setTimeout(run, 5000);
+          }
+        };
+
+        // Start the loop
+        run();
+      }
+
+      // --- Main Init Flow ---
       async function init(targetUsername) {
+        // Reset UI
         els.handle.innerText = `@${targetUsername}`;
         els.displayName.innerText = "Searching...";
         els.displayName.classList.add("animate-pulse-fast");
-        els.avatar.src = placeholderImg;
-        els.connections.innerText = "-";
-        els.followers.innerText = "-";
-        els.following.innerText = "-";
+        // Clear avatar to transparent pixel
+        els.avatar.src =
+          "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+        els.avatar.classList.add("opacity-0");
+
+        // Set initial state for stats (flashing dash)
+        [els.connections, els.followers, els.following].forEach((el) => {
+          el.innerText = "-";
+          el.classList.add("animate-pulse-fast");
+        });
         els.bio.innerText = "Loading bio...";
-        els.joinDate.innerText = "Joined: ...";
+        els.bio.classList.add("animate-pulse-fast");
 
         try {
+          // 1. FIRST: Find the User (Critical Step)
           const userSearchUrl = `https://users.roblox.com/v1/users/search?keyword=${targetUsername}&limit=10`;
           const searchData = await fetchProxy(userSearchUrl);
 
@@ -300,85 +386,66 @@
           );
 
           if (!user) {
-            els.displayName.innerText = "Handle Not Found";
-            els.bio.innerText = `Could not find "@${targetUsername}".`;
+            els.displayName.innerText = "Not Found";
+            els.bio.innerText = `User @${targetUsername} not found.`;
             els.displayName.classList.remove("animate-pulse-fast");
-            return;
+            els.bio.classList.remove("animate-pulse-fast");
+            return; // Stop everything if user doesn't exist
           }
 
+          // 2. User Found - Update Identity
           const userId = user.id;
-
           els.displayName.innerText = user.displayName;
           els.displayName.classList.remove("animate-pulse-fast");
           els.handle.innerText = `@${user.name}`;
 
-          const results = await Promise.allSettled([
-            fetchProxy(
-              `https://friends.roblox.com/v1/users/${userId}/friends/count`
-            ),
-            fetchProxy(
-              `https://friends.roblox.com/v1/users/${userId}/followers/count`
-            ),
-            fetchProxy(
-              `https://friends.roblox.com/v1/users/${userId}/followings/count`
-            ),
-            fetchProxy(`https://users.roblox.com/v1/users/${userId}`),
-          ]);
+          // 3. Start Independent Loops
 
-          const getVal = (res) => {
-            if (
-              res.status === "fulfilled" &&
-              res.value &&
-              res.value.count !== undefined
-            ) {
-              return res.value.count;
-            }
-            return 0;
-          };
-          const getBody = (res) =>
-            res.status === "fulfilled" ? res.value : {};
+          // Start Avatar Loop
+          trackAvatar(userId);
 
-          const [friendsRes, followersRes, followingRes, userRes] = results;
+          // Formatter for numbers (1.5k)
+          const fmt = (n) => (n > 999 ? (n / 1000).toFixed(1) + "k" : n);
 
-          els.connections.innerText = getVal(friendsRes);
-          const fmt = (n) => {
-            if (n === undefined || n === null) return 0;
-            return n > 999 ? (n / 1000).toFixed(1) + "k" : n;
-          };
+          // Friends/Connections
+          trackStat({
+            element: els.connections,
+            url: `https://friends.roblox.com/v1/users/${userId}/friends/count`,
+            extractValue: (d) => d.count,
+            formatValue: fmt,
+            type: "number",
+          });
 
-          els.followers.innerText = fmt(getVal(followersRes));
-          els.following.innerText = fmt(getVal(followingRes));
+          // Followers
+          trackStat({
+            element: els.followers,
+            url: `https://friends.roblox.com/v1/users/${userId}/followers/count`,
+            extractValue: (d) => d.count,
+            formatValue: fmt,
+            type: "number",
+          });
 
-          const userData = getBody(userRes);
-          els.bio.innerText = userData.description || "No bio available.";
+          // Following
+          trackStat({
+            element: els.following,
+            url: `https://friends.roblox.com/v1/users/${userId}/followings/count`,
+            extractValue: (d) => d.count,
+            formatValue: fmt,
+            type: "number",
+          });
 
-          if (userData.created) {
-            const date = new Date(userData.created);
-            els.joinDate.innerText = `Joined: ${date.toLocaleDateString(
-              "en-US",
-              { year: "numeric", month: "short", day: "numeric" }
-            )}`;
-          }
-
-          const avatarUrl = `https://thumbnails.roblox.com/v1/users/avatar?userIds=${userId}&size=720x720&format=Png&isCircular=false`;
-          try {
-            const avatarData = await fetchProxy(avatarUrl);
-            if (avatarData.data && avatarData.data[0].imageUrl) {
-              const newImg = new Image();
-              newImg.onload = () => {
-                els.avatar.src = avatarData.data[0].imageUrl;
-              };
-              newImg.src = avatarData.data[0].imageUrl;
-            }
-          } catch (e) {
-            console.log("Avatar fetch failed");
-          }
+          // Bio
+          trackStat({
+            element: els.bio,
+            url: `https://users.roblox.com/v1/users/${userId}`,
+            extractValue: (d) => d.description,
+            type: "text",
+          });
         } catch (err) {
-          console.error("API Error:", err);
+          console.error("Critical Init Error:", err);
           els.displayName.innerText = "Connection Error";
           els.displayName.classList.remove("animate-pulse-fast");
-          // Start the 30s countdown logic
-          startAutoRefresh(30);
+          setTimeout(() => window.location.reload(), 5000);
         }
       }
     </script>
